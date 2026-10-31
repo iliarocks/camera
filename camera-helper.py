@@ -22,7 +22,7 @@ try:
     )
     camera.configure(configuration)
     camera.start()
-    stop_requested.wait(5)
+    stop_requested.wait(1)
 
     while not stop_requested.is_set():
         buffer = io.BytesIO()
@@ -31,7 +31,6 @@ try:
         sys.stdout.buffer.write(len(data).to_bytes(4, "little"))
         sys.stdout.buffer.write(data)
         sys.stdout.buffer.flush()
-        stop_requested.wait(0.1)
 
 finally:
     camera.close()
