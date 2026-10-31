@@ -1,7 +1,18 @@
 import io
 import sys
 import time
+import threading
 from picamera2 import Picamera2
+
+stop_requested = threading.Event()
+
+def listen_for_stop():
+    for command in sys.stdin:
+        if command.strip() == "stop":
+            break
+    stop_requested.set()
+
+threading.Thread(target=listen_for_stop, daemon=True).start()
 
 camera = Picamera2()
 
@@ -11,15 +22,16 @@ try:
     )
     camera.configure(configuration)
     camera.start()
-    time.sleep(1)
+    stop_requested.wait(5)
 
-    # Capture one JPEG into an in-memory buffer.
-    # Send the buffer's bytes to standard output.
-    buffer = io.BytesIO()
-    camera.capture_file(buffer, format="jpeg")
-    data = buffer.getvalue()
-    sys.stdout.buffer.write(data)
-    sys.stdout.buffer.flush()
+    while not stop_requested.is_set():
+        buffer = io.BytesIO()
+        camera.capture_file(buffer, format="jpeg")
+        data = buffer.getvalue()
+        sys.stdout.buffer.write(len(data).to_bytes(4, "little"))
+        sys.stdout.buffer.write(data)
+        sys.stdout.buffer.flush()
+        stop_requested.wait(0.1)
 
 finally:
     camera.close()
